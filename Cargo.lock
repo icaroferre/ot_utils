@@ -8,7 +8,7 @@ checksum = "8a164bb2ceaeff4f42542bdb847c41517c78a60f5649671b2a07312b6e117549"
 
 [[package]]
 name = "ot_utils"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hound",
 ]

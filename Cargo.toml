@@ -1,8 +1,11 @@
 [package]
 name = "ot_utils"
 version = "0.1.0"
-authors = ["Icaro Ferre <icaroferre+bitbucket@gmail.com>"]
+authors = ["Icaro Ferre <contact@spektroaudio.com>"]
 edition = "2018"
+homepage = "https://github.com/icaroferre/ot_utils"
+repository = "https://github.com/icaroferre/ot_utils"
+categories = ["multimedia", "multimedia::encoding"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

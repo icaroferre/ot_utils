@@ -1,9 +1,8 @@
-[![Crates.io version][crate-img]][crate]
+[![Crates.io version][crate-img]][crate] [![Documentation][docs-img]][docs]
 
-[![Documentation][docs-img]][docs]
+----
 
-
-# About
+### About
 
 **ot_utils** is a Rust library that is designed to concatenate and generate .ot (slice) files for the [Elektron Octatrack](https://www.elektron.se/products/octatrack-mkii/) sampler.
 
@@ -14,7 +13,9 @@ The ```generate_ot_file``` function generates the .ot file and renames the tempo
 
 This library was inspired and based on the incredible [OctaChainer](https://github.com/KaiDrange/OctaChainer) tool created by [Kai Drange](https://github.com/KaiDrange). 
 
-## Example
+----
+
+### Example
 
 ```rust
 
@@ -58,15 +59,16 @@ OT_Slicer.generate_ot_file();
 
 ```
 
-## Limitations
+---
+
+### Limitations
 
 ot_utils currently only accepts mono, 16-bit, wav files.
 
-
 ----
 
-Created by [@icaroferre](http://instagram.com/icaroferre)
-spektroaudio.com
+Created by [@icaroferre](http://instagram.com/icaroferre)  
+[spektroaudio.com](http://spektroaudio.com)
 
 [crate]:         https://crates.io/crates/ot_utils
 [crate-img]:     https://img.shields.io/crates/v/ot_utils.svg

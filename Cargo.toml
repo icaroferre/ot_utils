@@ -6,6 +6,9 @@ edition = "2018"
 homepage = "https://github.com/icaroferre/ot_utils"
 repository = "https://github.com/icaroferre/ot_utils"
 categories = ["multimedia", "multimedia::encoding"]
+description = "Library designed for concatenating audio samples and generating .ot (slice) files for the Elektron Octatrack sampler."
+license = "GPL-3.0"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

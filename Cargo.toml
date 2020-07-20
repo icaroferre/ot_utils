@@ -1,0 +1,10 @@
+[package]
+name = "ot_utils"
+version = "0.1.0"
+authors = ["Icaro Ferre <icaroferre+bitbucket@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hound = "3.4.0"

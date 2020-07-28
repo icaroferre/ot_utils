@@ -54,7 +54,7 @@ impl Slicer {
         }
     }
 
-    
+    /// Clears out the slice vector and resets sample offset
     pub fn clear(&mut self) {
         self.slices.clear();
         self.start_offset = 0;

@@ -54,6 +54,14 @@ impl Slicer {
         }
     }
 
+    
+    pub fn clear(&mut self) {
+        self.slices.clear();
+        self.start_offset = 0;
+        self.sample_rate = 44100;
+        self.tempo = 124;
+    }
+
     /// Appends new audio file (.wav) to the concatenated wav file and creates a new slice
     pub fn add_file (&mut self, filepath : String) -> Result< &'static str, &'static str> {
         println!("Adding file to OT slice group: {}", filepath);
@@ -106,7 +114,7 @@ impl Slicer {
                             }
 
                             // Create new slice and append it to slices vector
-                            let new_ot_slice = OTSlice{start_point: self.start_offset, length: samples.len() as u32, loop_point: 0xFFFFFFFF};
+                            let new_ot_slice = OTSlice{start_point: self.start_offset, length: samples.len() as u32, loop_point: samples.len() as u32};
                             self.slices.push(new_ot_slice);
 
                             // Add sample length to start offset
@@ -190,7 +198,7 @@ impl Slicer {
             checksum += file_data[i] as u16;
         }
 
-        file_data = self.push_u16(file_data, checksum); // Slice Count
+        file_data = self.push_u16(file_data, checksum); // Push Checksum
 
 
         let output_folder_path : &Path = self.output_folder.as_ref();
@@ -229,8 +237,9 @@ impl Slicer {
             }
         };
 
+        self.clear();
+
         result
-        
 
     }
 

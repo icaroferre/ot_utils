@@ -1,6 +1,6 @@
 [package]
 name = "ot_utils"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Icaro Ferre <contact@spektroaudio.com>"]
 edition = "2018"
 homepage = "https://github.com/icaroferre/ot_utils"

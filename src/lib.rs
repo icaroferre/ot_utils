@@ -31,6 +31,11 @@ pub struct Slicer {
     pub sample_rate : u32,
     /// Vector of slices
     pub slices : Vec<OTSlice>,
+    // List of files to be processed
+    pub filelist : Vec<std::path::PathBuf>,
+    // Determines if the output file will be stereo or mono (not implemented yet)
+    pub stereo : bool,
+    max_file_length : usize,
     start_offset : u32,
     /// Tempo / BPM of the final .wav file
     pub tempo : u32
@@ -46,10 +51,13 @@ impl Slicer {
         
         Self {
             slices : Vec::new(),
+            filelist : Vec::new(),
             output_folder : "".to_string(),
             output_filename : "output".to_string(),
             sample_rate : 44100,
             start_offset : 0,
+            max_file_length : 0,
+            stereo : false,
             tempo: 124
         }
     }
@@ -62,9 +70,10 @@ impl Slicer {
         self.tempo = 124;
     }
 
-    /// Appends new audio file (.wav) to the concatenated wav file and creates a new slice
-    pub fn add_file (&mut self, filepath : String) -> Result< &'static str, &'static str> {
-        println!("Adding file to OT slice group: {}", filepath);
+    /// Adds file to the list of files to be processed
+    pub fn add_file (&mut self, filepath : String)  -> Result< &'static str, &'static str> {
+        let path = std::path::PathBuf::from(filepath.clone());
+        println!("Adding file to list: {}", filepath);
 
         // Define valid sample format
         let spec = hound::WavSpec {
@@ -74,60 +83,88 @@ impl Slicer {
             sample_format: hound::SampleFormat::Int,
         };
 
-        let path : &Path = filepath.as_ref();
+
+        // Check if file exists
+        match path.is_file() {
+            true => {
+                // Open file
+                let mut reader = hound::WavReader::open(filepath).unwrap();
+                // Check if file specs are valid
+                if reader.spec() == spec {
+                    let samples: Vec<i16> = reader.samples().map(|s| s.unwrap()).collect();
+
+                    // Check if file length is greater than max_file_length (used for creating evenly spaced sample chains)
+                    let total_samples = samples.len();
+                    if total_samples > self.max_file_length {
+                        self.max_file_length = total_samples;
+                    }
+
+                    // Add file path to list of files to be processed
+                    self.filelist.push(path);
+                    Ok("File added succesfully.")
+                } else {
+                    Err("Invalid file (invalid sample rate / bit rate / channel number)")
+                }
+                
+            },
+            false => {
+                Err("File not found.")
+            }
+        }
+
+    }
+    
+    /// Appends new audio file (.wav) to the concatenated wav file and creates a new slice
+    fn process_file (&mut self, filepath : std::path::PathBuf, evenly_spaced : bool) -> Result< &'static str, &'static str> {
+        println!("Processing file: {}", filepath.display());
+
+        // Define valid sample format
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: self.sample_rate.clone(),
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
 
         let result =  {
             if self.slices.len() < 65 {
-            // Check if file exists
-                match path.is_file() {
-                    true => {
-                        // Open file
-                        let mut reader = hound::WavReader::open(filepath).unwrap();
-                        // Check if file specs are valid
-                        if reader.spec() == spec {
-                            // Return aray of samples (i16)
-                            let samples: Vec<i16> = reader.samples().map(|s| s.unwrap()).collect();
+            
+                // Open file
+                let mut reader = hound::WavReader::open(filepath).unwrap();
+
+                // Return aray of samples (i16)
+                    let samples: Vec<i16> = reader.samples().map(|s| s.unwrap()).collect();
 
 
-                            // Create path for temporary concat file
-                            let output_folder_path : &Path = self.output_folder.as_ref();
-                            let temp_file_path = Path::join(output_folder_path, "ot_tempfile.wav".to_string());
+                    // Create path for temporary concat file
+                    let output_folder_path : &Path = self.output_folder.as_ref();
+                    let mut wav_file_name : String = self.output_filename.clone();
+                    wav_file_name.push_str(".wav");
+                    let temp_file_path = Path::join(output_folder_path, wav_file_name);
 
-                            match temp_file_path.is_file() {
-                                true => {
-                                    // Append samples if temporary files already exists
-                                    let mut temp_wav_file = hound::WavWriter::append(temp_file_path).unwrap();
-                                    for i in 0..samples.len() {
-                                        temp_wav_file.write_sample(samples[i].clone()).unwrap();
-                                    };
-                                    temp_wav_file.finalize().unwrap();
+                    let slice_len : u32 = match temp_file_path.is_file() {
+                        true => {
+                            // Append samples if temporary files already exists
+                            let temp_wav_file = hound::WavWriter::append(temp_file_path).unwrap();
+                            self.fill_wav_file(temp_wav_file, samples, evenly_spaced)
 
-                                },
-                                false => {
-                                    // Create new file (based on specified specs) and add samples
-                                    let mut temp_wav_file = hound::WavWriter::create(temp_file_path, spec).unwrap();
-                                    for i in 0..samples.len() {
-                                        temp_wav_file.write_sample(samples[i].clone()).unwrap();
-                                    };
-                                    temp_wav_file.finalize().unwrap();
-                                }
-                            }
-
-                            // Create new slice and append it to slices vector
-                            let new_ot_slice = OTSlice{start_point: self.start_offset, length: samples.len() as u32, loop_point: samples.len() as u32};
-                            self.slices.push(new_ot_slice);
-
-                            // Add sample length to start offset
-                            self.start_offset += samples.len() as u32;
-                            
-                            Ok("File succesfully parsed.")
-                        } else {
-                            Err("Invalid file (invalid sample rate / bit rate / channel number)")
+                        },
+                        false => {
+                            // Create new file (based on specified specs) and add samples
+                            let temp_wav_file = hound::WavWriter::create(temp_file_path, spec).unwrap();
+                            self.fill_wav_file(temp_wav_file, samples, evenly_spaced)
                         }
-                    },
-                    false => Err("File not found."),
-                }
-                
+                    };
+
+                    // Create new slice and append it to slices vector
+                    let new_ot_slice = OTSlice{start_point: self.start_offset, length: slice_len as u32, loop_point: slice_len as u32};
+                    self.slices.push(new_ot_slice);
+
+                    // Add sample length to start offset
+                    self.start_offset += slice_len;
+                    
+                    Ok("File succesfully parsed.")
+               
             } else {
                 Err("No more slice slots available.")
             } 
@@ -137,9 +174,50 @@ impl Slicer {
         
     }
 
-    /// Generates the .ot file for the Octatrack and renames the concat .wav file to the same name as the .ot file
-    pub fn generate_ot_file(&mut self) -> Result<&'static str, &'static str> {
+    fn fill_wav_file(&mut self, mut writer : hound::WavWriter<std::io::BufWriter<std::fs::File>>, samples: Vec<i16>, evenly_spaced : bool) -> u32 {
+        match evenly_spaced {
+            true => {
+                for i in 0..self.max_file_length {
+                    let mut sample_value : i16 = 0;
+                    if i < samples.len() {
+                        sample_value = samples[i].clone()
+                    }
+                    writer.write_sample(sample_value).unwrap();
+                };
+            },
+            false => {
+                for i in 0..samples.len() {
+                    writer.write_sample(samples[i].clone()).unwrap();
+                };
+            }
+        }
         
+        writer.finalize().unwrap();
+        samples.len() as u32
+    } 
+
+    /// Generates the .ot file for the Octatrack and renames the concat .wav file to the same name as the .ot file
+    pub fn generate_ot_file(&mut self, evenly_spaced: bool) -> Result<&'static str, &'static str> {
+
+        println!("Generating Octatrack files...");
+
+        // Remove existing sample chain wav file 
+        let output_folder_path : &Path = self.output_folder.as_ref();
+        let mut wav_file_name : String = self.output_filename.clone();
+        wav_file_name.push_str(".wav");
+        let final_wav_file = Path::join(output_folder_path, wav_file_name);
+        if final_wav_file.is_file() {
+            println!("Removing existing wav file: {}", final_wav_file.display());
+            fs::remove_file(final_wav_file).unwrap();
+        }
+
+        // Process files in filelist
+        for _ in 0..self.filelist.len() {
+            let file_path : std::path::PathBuf = self.filelist.pop().unwrap();
+            self.process_file(file_path, evenly_spaced).unwrap();
+        }
+
+
         // OT File header
         let mut file_data : Vec<u8> = vec![0x46,0x4F,0x52,0x4D,0x00,0x00,0x00,0x00,0x44,0x50,0x53,0x31,0x53,0x4D,0x50,0x41, 0x00,0x00,0x00,0x00,0x00,0x02,0x00];
         
@@ -153,7 +231,7 @@ impl Slicer {
         }
 
 
-        println!("Generating Octatrack files...");
+        
         println!("Total samples: {}", total_samples);
 
         // Calculate the number of bars
@@ -220,28 +298,12 @@ impl Slicer {
 
         println!("Finished writing Octatrack .ot file.");
 
-
-        // Rename temporary .wav file
-        let output_folder_path : &Path = self.output_folder.as_ref();
-        let temp_file_path = Path::join(output_folder_path, "ot_tempfile.wav".to_string());
-        let mut wav_file_name : String = self.output_filename.clone();
-        wav_file_name.push_str(".wav");
-        let wav_file_path = Path::join(output_folder_path, wav_file_name);
-
-        let result = match fs::rename(temp_file_path, wav_file_path) {
-            Ok(_e) => {
-                Ok("Temporary WAV file renamed succesfully.")
-            },
-            Err(_e) => {
-                Err("Temporary WAV file not found.")
-            }
-        };
-
         self.clear();
 
-        result
+        Ok("Temporary WAV file renamed succesfully.")
 
     }
+
 
 
     fn push_u32(&mut self, mut vector : Vec<u8>, num : u32) -> Vec<u8> {

@@ -211,6 +211,9 @@ impl Slicer {
             fs::remove_file(final_wav_file).unwrap();
         }
 
+        // Reverse for pop
+        self.filelist.reverse();
+
         // Process files in filelist
         for _ in 0..self.filelist.len() {
             let file_path : std::path::PathBuf = self.filelist.pop().unwrap();

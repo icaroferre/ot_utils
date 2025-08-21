@@ -1,6 +1,6 @@
 [package]
 name = "ot_utils"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Icaro Ferre <contact@spektroaudio.com>"]
 edition = "2018"
 homepage = "https://github.com/icaroferre/ot_utils"
@@ -13,4 +13,4 @@ license = "GPL-3.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hound = "3.4.0"
+hound = "3.5.1"

@@ -18,45 +18,38 @@ This library was inspired and based on the incredible [OctaChainer](https://gith
 ### Example
 
 ```rust
-
-extern crate ot_utils;
-
+use std::fs;
+use std::path::Path;
 use ot_utils::Slicer;
- 
 
-let folder_path = "path/to/sample/folder".to_string();
-let check_file: &Path = &folder_path.as_ref();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let folder_path = "path/to/sample/folder";
+    let folder = Path::new(folder_path);
 
-// Validate directory
-if check_file.is_dir() {
+    // Validate directory
+    if folder.is_dir() {
+        // Create slicer instance
+        let mut slicer = Slicer::default();
+        slicer.output_folder = folder_path.to_string();
+        slicer.output_filename = folder.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("output")
+            .to_string();
 
-    // Get list of files
-    let paths = fs::read_dir(&folder_path).unwrap();
+        // Add .wav files in folder
+        for entry in fs::read_dir(folder)? {
+            let path = entry?.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("wav") {
+                slicer.add_file(path.to_string_lossy().to_string())?;
+            }
+        }
 
-    // Set output folder
-    OT_Slicer.output_folder = folder_path.clone();
-
-    // Set final .ot and .wav filename
-    OT_Slicer.output_filename = check_file.file_name().unwrap().to_str().unwrap().to_string();
-
-
-    for path in paths {
-        // Get file info (path, name, and extension)
-        let file_path = path.unwrap().path();
-        let file_name = &file_path.file_name();
-        let file_ext = match &file_path.extension(){
-            &Some(x) => x.to_str().unwrap(),
-            &None => " "
-        };
-
-        if file_ext == "wav" {
-            OT_Slicer.add_file(new_file);
-        } 
+        // Generate .ot file
+        slicer.generate_ot_file(false)?;
     }
-}
-        
-OT_Slicer.generate_ot_file();
 
+    Ok(())
+}
 ```
 
 ---
